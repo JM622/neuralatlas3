@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build Your Own Experiment — NeuralAtlas</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .timeline-bar { background: var(--panel-bg-2); border-top: 1px solid var(--border); padding: 12px 16px; }
+  .timeline-row { display: flex; align-items: center; gap: 12px; }
+  .timeline-row input[type="range"] { flex: 1; }
+  .timeline-time { font-family: "SFMono-Regular", Consolas, monospace; font-size: 12.5px; color: var(--teal); min-width: 70px; text-align: right; }
+  .result-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .save-name { margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<nav class="na-nav">
+  <div class="na-nav-inner">
+    <div class="na-brand"><span class="dot"></span> NeuralAtlas</div>
+    <div class="na-nav-links">
+      <a href="index.html">Home</a>
+      <a href="network-builder.html">Network Builder</a>
+      <a href="disease-center.html">Disease Center</a>
+      <a href="drug-lab.html">Drug Lab</a>
+      <a href="dashboard.html">Dashboard</a>
+      <div class="na-nav-more">
+        <button class="na-nav-more-btn">More ▾</button>
+        <div class="na-nav-menu">
+          <div class="section-label">Simulators</div>
+          <a href="synapse-simulator.html">Synapse Simulator</a>
+          <a href="brain-regions.html">Brain Region Simulator</a>
+          <a href="reflex-arc.html">Reflex Arc Simulator</a>
+          <a href="vision.html">Vision Simulator</a>
+          <a href="memory.html">Memory Formation</a>
+          <a href="brain-3d.html">3D Brain Viewer</a>
+          <a href="microscopy.html">Microscopy Lab</a>
+          <div class="section-label">Tools</div>
+          <a href="signal-analyzer.html">Signal Analyzer</a>
+          <a href="experiment-builder.html" class="active">Build Your Own Experiment</a>
+          <a href="saved-experiments.html">Saved Experiments</a>
+          <a href="profile.html">Profile</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="sim-app">
+  <div id="sidebar">
+    <div class="section-header" style="border-top:none; margin-top:0; padding-top:0;">Configure Experiment</div>
+    <div class="field">
+      <label>Neuron Count <span class="val" id="valCount">40</span></label>
+      <input type="range" id="sldCount" min="5" max="150" step="1" value="40">
+    </div>
+    <div class="field">
+      <label>Signal Strength <span class="val" id="valStrength">0.50</span></label>
+      <input type="range" id="sldStrength" min="0" max="1" step="0.01" value="0.5">
+    </div>
+    <div class="field">
+      <label>Run Duration (s) <span class="val" id="valDuration">20</span></label>
+      <input type="range" id="sldDuration" min="5" max="60" step="1" value="20">
+    </div>
+    <div class="row2">
+      <button id="btnLearning" class="btn">Learning: OFF</button>
+      <select id="selDisease"></select>
+    </div>
+
+    <button id="btnRun" class="btn btn-primary btn-block" style="margin-top:14px;">▶ Run Experiment</button>
+    <div class="hint" id="runStatus">Configure the experiment above, then run it. The network will simulate
+      for the chosen duration while recording a full timeline.</div>
+
+    <div id="resultsPanel" style="display:none;">
+      <div class="section-header">Results</div>
+      <div class="status-line" id="resultSummary"></div>
+      <div class="result-actions">
+        <button id="btnExportCSV" class="btn">Export CSV</button>
+        <button id="btnSaveExp" class="btn">Save Experiment</button>
+      </div>
+      <input type="text" id="saveName" class="save-name" placeholder="Name this experiment…">
+    </div>
+
+    <div class="section-header">Status</div>
+    <div class="status-line" id="statusLine">Neurons: 0   Synapses: 0</div>
+  </div>
+
+  <div id="main">
+    <div id="canvasWrap">
+      <canvas id="sim"></canvas>
+      <div id="statusBar"></div>
+      <div id="recenterBtn" title="Recenter view">&#8982;</div>
+    </div>
+    <div id="graphs">
+      <div class="graph-cell"><div class="graph-title">Membrane Potential (selected)</div><canvas id="gPotential"></canvas></div>
+      <div class="graph-cell"><div class="graph-title">Neurons Firing</div><canvas id="gFiring"></canvas></div>
+      <div class="graph-cell"><div class="graph-title">Avg Synaptic Strength</div><canvas id="gStrength"></canvas></div>
+      <div class="graph-cell"><div class="graph-title">Network Activity</div><canvas id="gActivity"></canvas></div>
+    </div>
+    <div class="timeline-bar" id="timelineBar" style="display:none;">
+      <div class="timeline-row">
+        <span class="hint" style="margin:0;">Timeline</span>
+        <input type="range" id="sldTimeline" min="0" max="0" step="1" value="0">
+        <span class="timeline-time" id="timelineTime">0.0s</span>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="tooltip"></div>
+
+<script src="engine.js"></script>
+<script src="storage.js"></script>
+<script>
+"use strict";
+const { Network, Diseases } = NA;
+const PALETTE = {
+  canvasBg: "#10131a", grid: "#181e28",
+  exc: "#4fd1c5", excFire: "#dcfffa", inh: "#e89a54", inhFire: "#ffdeb3",
+  refractoryTint: "#3c424e", synExc: "#3a646e", synInh: "#6e4e3a", pulse: "#4fd1c5", selectRing: "#4fd1c5",
+};
+const FIRE_FLASH_DURATION = 0.18;
+const simCanvas = document.getElementById("sim");
+const simCtx = simCanvas.getContext("2d");
+const wrap = document.getElementById("canvasWrap");
+const statusBar = document.getElementById("statusBar");
+const tooltip = document.getElementById("tooltip");
+const network = new Network(55);
+let dpr = Math.max(1, window.devicePixelRatio || 1);
+let W = 0, H = 0, panX = 0, panY = 0, isPanning = false, panStart = null;
+let glowCache = new Map();
+
+let config = { count: 40, strength: 0.5, duration: 20, learning: false, disease: Diseases.HEALTHY };
+let experimentRunning = false;
+let scrubIndex = null; // when set, draw from snapshot instead of live
+
+function resizeCanvas() {
+  const rect = wrap.getBoundingClientRect();
+  W = rect.width; H = rect.height; dpr = Math.max(1, window.devicePixelRatio||1);
+  simCanvas.width = W*dpr; simCanvas.height = H*dpr; simCtx.setTransform(dpr,0,0,dpr,0,0);
+}
+function drawGrid() {
+  simCtx.fillStyle = PALETTE.canvasBg; simCtx.fillRect(-panX,-panY,W,H);
+  simCtx.strokeStyle = PALETTE.grid; simCtx.lineWidth = 1;
+  const step=40, xMin=-panX, xMax=W-panX, yMin=-panY, yMax=H-panY;
+  const startX=Math.floor(xMin/step)*step, startY=Math.floor(yMin/step)*step;
+  simCtx.beginPath();
+  for (let x=startX;x<=xMax;x+=step) { simCtx.moveTo(x+0.5,yMin); simCtx.lineTo(x+0.5,yMax); }
+  for (let y=startY;y<=yMax;y+=step) { simCtx.moveTo(xMin,y+0.5); simCtx.lineTo(xMax,y+0.5); }
+  simCtx.stroke();
+}
+
+let draggingNeuron=null, hoverNeuron=null;
+function localPos(evt){ const r=simCanvas.getBoundingClientRect(); return [evt.clientX-r.left, evt.clientY-r.top]; }
+function toWorld(pos){ return [pos[0]-panX, pos[1]-panY]; }
+function updateCursor(){ simCanvas.style.cursor = isPanning?"grabbing":(hoverNeuron?"pointer":"grab"); }
+
+simCanvas.addEventListener("contextmenu", (e)=>e.preventDefault());
+simCanvas.addEventListener("mousedown", (e) => {
+  if (scrubIndex !== null) return;
+  if (e.button===1) { e.preventDefault(); isPanning=true; panStart={x:e.clientX,y:e.clientY,panX0:panX,panY0:panY}; updateCursor(); return; }
+  const [wx,wy] = toWorld(localPos(e));
+  const neuron = network.neuronAt(wx,wy);
+  if (e.button===0) {
+    if (neuron) { network.selected_neuron = neuron; }
+    else { isPanning=true; panStart={x:e.clientX,y:e.clientY,panX0:panX,panY0:panY}; updateCursor(); }
+  }
+});
+window.addEventListener("mouseup", (e) => { if (e.button===1 || (e.button===0 && isPanning)) { isPanning=false; panStart=null; updateCursor(); } });
+window.addEventListener("mousemove", (e) => {
+  const rect = simCanvas.getBoundingClientRect();
+  const inside = e.clientX>=rect.left && e.clientX<=rect.right && e.clientY>=rect.top && e.clientY<=rect.bottom;
+  if (isPanning && panStart) { panX = panStart.panX0+(e.clientX-panStart.x); panY = panStart.panY0+(e.clientY-panStart.y); }
+  const [lx,ly] = [e.clientX-rect.left, e.clientY-rect.top]; const [wx,wy] = toWorld([lx,ly]);
+  hoverNeuron = null; tooltip.style.display = "none";
+  if (inside && scrubIndex === null) {
+    const n = network.neuronAt(wx,wy);
+    if (n) {
+      hoverNeuron = n;
+      tooltip.innerHTML = `<b>${n.inhibitory?"Inhibitory":"Excitatory"} neuron #${n.id}</b><br>V=${n.v.toFixed(1)} mV · fires: ${n.fire_count}`;
+      tooltip.style.left=(e.clientX+16)+"px"; tooltip.style.top=(e.clientY+16)+"px"; tooltip.style.display="block";
+    }
+  }
+  updateCursor();
+});
+
+function lerpColor(hex1,hex2,t){ t=Math.max(0,Math.min(1,t)); const c1=hexToRgb(hex1),c2=hexToRgb(hex2); return `rgb(${Math.round(c1[0]+(c2[0]-c1[0])*t)},${Math.round(c1[1]+(c2[1]-c1[1])*t)},${Math.round(c1[2]+(c2[2]-c1[2])*t)})`; }
+function hexToRgb(hex){ const h=hex.replace("#",""); return [parseInt(h.substr(0,2),16),parseInt(h.substr(2,2),16),parseInt(h.substr(4,2),16)]; }
+function hexToRgba(hex,a){ const [r,g,b]=hexToRgb(hex); return `rgba(${r},${g},${b},${a})`; }
+function getGlow(radius,color) {
+  const key=radius+"_"+color;
+  if (glowCache.has(key)) return glowCache.get(key);
+  const size=radius*4*dpr;
+  const c=document.createElement("canvas"); c.width=size; c.height=size;
+  const gctx=c.getContext("2d");
+  const grad=gctx.createRadialGradient(size/2,size/2,0,size/2,size/2,size/2);
+  grad.addColorStop(0,hexToRgba(color,0.35)); grad.addColorStop(1,hexToRgba(color,0));
+  gctx.fillStyle=grad; gctx.beginPath(); gctx.arc(size/2,size/2,size/2,0,Math.PI*2); gctx.fill();
+  glowCache.set(key,c); return c;
+}
+
+function drawLiveScene() {
+  drawGrid(); simCtx.save(); simCtx.translate(panX,panY);
+  for (const s of network.synapses) {
+    simCtx.strokeStyle = s.isInhibitory ? PALETTE.synInh : PALETTE.synExc;
+    simCtx.lineWidth = Math.max(1,1+s.strength*3);
+    simCtx.beginPath(); simCtx.moveTo(s.pre.x,s.pre.y); simCtx.lineTo(s.post.x,s.post.y); simCtx.stroke();
+    for (const frac of s.travelingPositions(network.sim_time)) {
+      const px=s.pre.x+(s.post.x-s.pre.x)*frac, py=s.pre.y+(s.post.y-s.pre.y)*frac;
+      simCtx.fillStyle=PALETTE.pulse; simCtx.beginPath(); simCtx.arc(px,py,3.5,0,Math.PI*2); simCtx.fill();
+    }
+  }
+  for (const n of network.neurons) drawNeuronLive(n);
+  simCtx.restore();
+  statusBar.innerHTML = `<span>t=${network.sim_time.toFixed(1)}s</span><span class="tag ${network.running?"on":""}">${network.running?"RUNNING":"PAUSED"}</span>`;
+}
+function drawNeuronLive(n) {
+  const base = n.inhibitory ? PALETTE.inh : PALETTE.exc;
+  const fireColor = n.inhibitory ? PALETTE.inhFire : PALETTE.excFire;
+  let color, radius = Math.min(15, n.radius);
+  if (n.is_firing) {
+    const fr = n.fire_flash_timer/FIRE_FLASH_DURATION;
+    color = lerpColor(base, fireColor, fr); radius += 3*fr;
+    const glow = getGlow(radius+3, fireColor); const gs = glow.width/dpr;
+    simCtx.drawImage(glow, n.x-gs/2, n.y-gs/2, gs, gs);
+  } else if (n.inRefractory()) { color = lerpColor(base, PALETTE.refractoryTint, 0.6); }
+  else {
+    const span = Math.max(1.0,(n.v_threshold+n.excitability_bias)-n.v_rest);
+    const closeness = Math.max(0,Math.min(1,(n.v-n.v_rest)/span));
+    color = lerpColor(base, fireColor, closeness*0.35);
+  }
+  simCtx.fillStyle = color; simCtx.beginPath(); simCtx.arc(n.x,n.y,radius,0,Math.PI*2); simCtx.fill();
+  simCtx.strokeStyle = "#0a0a0e"; simCtx.lineWidth = 1.5; simCtx.stroke();
+  if (n === network.selected_neuron) { simCtx.strokeStyle=PALETTE.selectRing; simCtx.lineWidth=2; simCtx.beginPath(); simCtx.arc(n.x,n.y,radius+4,0,Math.PI*2); simCtx.stroke(); }
+}
+
+function drawSnapshotScene(snap) {
+  drawGrid(); simCtx.save(); simCtx.translate(panX,panY);
+  const byId = new Map(snap.neurons.map((n) => [n.id, n]));
+  for (const s of snap.synapses) {
+    const a = byId.get(s.preId), b = byId.get(s.postId);
+    if (!a || !b) continue;
+    simCtx.strokeStyle = s.inhibitory ? PALETTE.synInh : PALETTE.synExc;
+    simCtx.lineWidth = Math.max(1, 1 + s.strength*3);
+    simCtx.beginPath(); simCtx.moveTo(a.x,a.y); simCtx.lineTo(b.x,b.y); simCtx.stroke();
+  }
+  for (const n of snap.neurons) {
+    const base = n.inhibitory ? PALETTE.inh : PALETTE.exc;
+    const fireColor = n.inhibitory ? PALETTE.inhFire : PALETTE.excFire;
+    let color = base, radius = 12;
+    if (n.firing) { color = fireColor; radius = 15; const glow=getGlow(radius+3, fireColor); const gs=glow.width/dpr; simCtx.drawImage(glow, n.x-gs/2, n.y-gs/2, gs, gs); }
+    else if (n.refractory) { color = lerpColor(base, PALETTE.refractoryTint, 0.6); }
+    simCtx.fillStyle = color; simCtx.beginPath(); simCtx.arc(n.x,n.y,radius,0,Math.PI*2); simCtx.fill();
+    simCtx.strokeStyle = "#0a0a0e"; simCtx.lineWidth = 1.5; simCtx.stroke();
+  }
+  simCtx.restore();
+  statusBar.innerHTML = `<span>t=${snap.t.toFixed(1)}s</span><span class="tag">TIMELINE PLAYBACK</span>`;
+}
+
+const chartCanvases = { potential: document.getElementById("gPotential"), firing: document.getElementById("gFiring"), strength: document.getElementById("gStrength"), activity: document.getElementById("gActivity") };
+function fitChartCanvas(c){ const r=c.getBoundingClientRect(); c.width=r.width*dpr; c.height=r.height*dpr; const ctx=c.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0); return {ctx,w:r.width,h:r.height}; }
+function drawLineChart(canvas,data,opts={}) {
+  const {ctx,w,h}=fitChartCanvas(canvas); ctx.clearRect(0,0,w,h);
+  if (!data.length) { ctx.fillStyle="#4a5468"; ctx.font="11px sans-serif"; ctx.textAlign="center"; ctx.fillText(opts.emptyText||"no data",w/2,h/2); return; }
+  const min=opts.min??Math.min(...data), max=opts.max??Math.max(...data); const range=(max-min)||1, pad=4;
+  if (opts.fill) {
+    ctx.beginPath(); ctx.moveTo(0,h-pad);
+    data.forEach((v,i)=>{ const x=(i/(data.length-1||1))*w, y=h-pad-((v-min)/range)*(h-pad*2); ctx.lineTo(x,y); });
+    ctx.lineTo(w,h-pad); ctx.closePath(); ctx.fillStyle = opts.fillColor||"rgba(79,209,197,0.25)"; ctx.fill();
+  }
+  ctx.beginPath();
+  data.forEach((v,i)=>{ const x=(i/(data.length-1||1))*w, y=h-pad-((v-min)/range)*(h-pad*2); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
+  ctx.strokeStyle = opts.color||"#4fd1c5"; ctx.lineWidth=1.4; ctx.stroke();
+  if (opts.marker !== undefined) {
+    const x = (opts.marker/(data.length-1||1))*w;
+    ctx.strokeStyle = "#ffd166"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke();
+  }
+}
+function drawBarChart(canvas,data,opts={}) {
+  const {ctx,w,h} = fitChartCanvas(canvas); ctx.clearRect(0,0,w,h);
+  if (!data.length) return;
+  const max = Math.max(1,...data)*1.15; const barW = w/data.length;
+  ctx.fillStyle = opts.color||"#ffd166";
+  data.forEach((v,i)=>{ const barH=(v/max)*(h-4); ctx.fillRect(i*barW,h-barH,Math.max(1,barW-1),barH); });
+}
+function renderCharts() {
+  if (scrubIndex !== null && network.snapshots.length) {
+    const upTo = scrubIndex + 1;
+    const selId = network.selected_neuron ? network.selected_neuron.id : null;
+    if (selId !== null) {
+      const vals = network.snapshots.slice(0, upTo)
+        .map((s) => { const nn = s.neurons.find((x) => x.id === selId); return nn ? nn.v : null; })
+        .filter((v) => v !== null);
+      drawLineChart(chartCanvases.potential, vals, { min: -90, max: -30, color: "#4fd1c5" });
+    } else {
+      drawLineChart(chartCanvases.potential, [], { emptyText: "no neuron selected" });
+    }
+    drawBarChart(chartCanvases.firing, network.firing_count_history.slice(0, upTo), { color: "#ffd166" });
+    drawLineChart(chartCanvases.strength, network.avg_strength_history.slice(0, upTo), { min: 0, max: 1.05, color: "#9b8bff" });
+    drawLineChart(chartCanvases.activity, network.activity_history.slice(0, upTo), { min: 0, max: 1.05, color: "#4fd1c5", fill: true });
+    return;
+  }
+  const n = network.selected_neuron;
+  if (n && n.history.length>1) drawLineChart(chartCanvases.potential, n.history, { min: Math.min(n.v_reset,n.v_rest)-15, max: n.v_threshold+20, color:"#4fd1c5" });
+  else drawLineChart(chartCanvases.potential, [], { emptyText: "no neuron selected" });
+  drawBarChart(chartCanvases.firing, network.firing_count_history, { color: "#ffd166" });
+  drawLineChart(chartCanvases.strength, network.avg_strength_history, { min:0, max:1.05, color:"#9b8bff" });
+  drawLineChart(chartCanvases.activity, network.activity_history, { min:0, max:1.05, color:"#4fd1c5", fill:true });
+}
+
+const el = (id) => document.getElementById(id);
+function updateStatus() { el("statusLine").textContent = `Neurons: ${network.neurons.length}   Synapses: ${network.synapses.length}`; }
+
+el("selDisease").innerHTML = Diseases.ALL_MODES.map(m => `<option>${m}</option>`).join("");
+el("sldCount").addEventListener("input", (e) => { config.count = parseInt(e.target.value); el("valCount").textContent = config.count; });
+el("sldStrength").addEventListener("input", (e) => { config.strength = parseFloat(e.target.value); el("valStrength").textContent = config.strength.toFixed(2); });
+el("sldDuration").addEventListener("input", (e) => { config.duration = parseInt(e.target.value); el("valDuration").textContent = config.duration; });
+el("btnLearning").addEventListener("click", () => { config.learning = !config.learning; el("btnLearning").textContent = "Learning: " + (config.learning?"ON":"OFF"); el("btnLearning").classList.toggle("toggle-on", config.learning); });
+el("selDisease").addEventListener("change", (e) => { config.disease = e.target.value; });
+
+function runExperiment() {
+  scrubIndex = null;
+  document.getElementById("timelineBar").style.display = "none";
+  document.getElementById("resultsPanel").style.display = "none";
+  network.default_synapse_strength = config.strength;
+  network.learning_enabled = config.learning;
+  network.disease_mode = config.disease;
+  network._strokeCenterX = undefined; network._strokeCenterY = undefined;
+  network.buildDefaultDemo(W, H*0.9, config.count);
+  network.running = true;
+  experimentRunning = true;
+  el("btnRun").disabled = true;
+  el("btnRun").textContent = "Running…";
+  el("runStatus").textContent = `Running for ${config.duration}s of simulated time — stimulating a sample of neurons to kick off activity.`;
+  const sample = network.neurons.slice(0, Math.max(1, Math.ceil(network.neurons.length*0.15)));
+  for (const n of sample) network.stimulate(n);
+  updateStatus();
+}
+function finishExperiment() {
+  network.running = false;
+  experimentRunning = false;
+  el("btnRun").disabled = false;
+  el("btnRun").textContent = "▶ Run Experiment";
+  el("runStatus").textContent = "Run complete. Scrub the timeline below, export the data, or save this experiment.";
+  const totalFires = network.neurons.reduce((a,n) => a+n.fire_count, 0);
+  const avgStrength = network.avg_strength_history.length ? network.avg_strength_history[network.avg_strength_history.length-1] : 0;
+  el("resultSummary").innerHTML = `Total spikes: ${totalFires}<br>Final avg synaptic strength: ${avgStrength.toFixed(3)}<br>Neurons: ${network.neurons.length} · Synapses: ${network.synapses.length}`;
+  document.getElementById("resultsPanel").style.display = "block";
+  const timelineBar = document.getElementById("timelineBar");
+  timelineBar.style.display = "block";
+  const sld = document.getElementById("sldTimeline");
+  sld.max = Math.max(0, network.snapshots.length - 1);
+  sld.value = sld.max;
+  scrubIndex = null;
+}
+
+el("btnRun").addEventListener("click", runExperiment);
+
+document.getElementById("sldTimeline").addEventListener("input", (e) => {
+  scrubIndex = parseInt(e.target.value);
+  const snap = network.snapshots[scrubIndex];
+  if (snap) document.getElementById("timelineTime").textContent = snap.t.toFixed(1) + "s";
+});
+
+el("btnExportCSV").addEventListener("click", () => {
+  const rows = [["time_s", "neurons_firing", "avg_synaptic_strength", "network_activity"]];
+  for (let i = 0; i < network.time_history.length; i++) {
+    rows.push([network.time_history[i].toFixed(3), network.firing_count_history[i], network.avg_strength_history[i].toFixed(4), network.activity_history[i].toFixed(4)]);
+  }
+  naDownloadCSV(rows, "neuralatlas-experiment-" + Date.now() + ".csv");
+});
+el("btnSaveExp").addEventListener("click", () => {
+  const label = document.getElementById("saveName").value.trim() || ("Experiment " + new Date().toLocaleString());
+  const totalFires = network.neurons.reduce((a,n) => a+n.fire_count, 0);
+  const exp = {
+    id: "exp_" + Date.now() + "_" + Math.floor(Math.random()*1e6),
+    label,
+    createdAt: new Date().toISOString(),
+    config: { ...config },
+    results: {
+      finalNeuronCount: network.neurons.length,
+      finalSynapseCount: network.synapses.length,
+      totalFires,
+      finalAvgStrength: network.avg_strength_history.length ? network.avg_strength_history[network.avg_strength_history.length-1] : 0,
+      timeHistory: network.time_history.slice(),
+      firingCountHistory: network.firing_count_history.slice(),
+      avgStrengthHistory: network.avg_strength_history.slice(),
+      activityHistory: network.activity_history.slice(),
+      finalSynapseStrengths: network.synapses.map((s) => ({ strength: s.strength, inhibitory: s.isInhibitory })),
+    },
+  };
+  naAddExperiment(exp);
+  document.getElementById("saveName").value = "";
+  el("runStatus").textContent = `Saved as "${label}". View it on the Saved Experiments or Dashboard page.`;
+});
+
+document.getElementById("recenterBtn").addEventListener("click", () => { panX=0; panY=0; });
+
+let lastT = performance.now();
+function loop(t) {
+  const dt = Math.min(0.05,(t-lastT)/1000); lastT=t;
+  if (experimentRunning) {
+    network.update(dt);
+    if (network.sim_time >= config.duration) finishExperiment();
+  }
+  if (scrubIndex !== null && network.snapshots[scrubIndex]) drawSnapshotScene(network.snapshots[scrubIndex]);
+  else drawLiveScene();
+  updateStatus();
+  if (!loop._chartAcc) loop._chartAcc=0;
+  loop._chartAcc += dt*1000;
+  if (loop._chartAcc>=250 || scrubIndex!==null) { loop._chartAcc=0; renderCharts(); }
+  requestAnimationFrame(loop);
+}
+window.addEventListener("resize", () => { resizeCanvas(); });
+resizeCanvas();
+
+// If arriving from Saved Experiments with ?load=<id>, pre-fill config from that saved run.
+(function loadFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const loadId = params.get("load");
+  if (!loadId || typeof naLoadExperiments !== "function") return;
+  const saved = naLoadExperiments().find((e) => e.id === loadId);
+  if (!saved) return;
+  config = { ...config, ...saved.config };
+  el("sldCount").value = config.count; el("valCount").textContent = config.count;
+  el("sldStrength").value = config.strength; el("valStrength").textContent = config.strength.toFixed(2);
+  el("sldDuration").value = config.duration; el("valDuration").textContent = config.duration;
+  el("btnLearning").textContent = "Learning: " + (config.learning ? "ON" : "OFF");
+  el("btnLearning").classList.toggle("toggle-on", config.learning);
+  el("selDisease").value = config.disease;
+  el("runStatus").textContent = `Loaded settings from "${saved.label}". Click Run Experiment to re-run it.`;
+})();
+
+network.buildDefaultDemo(W, H*0.9, config.count);
+updateStatus(); renderCharts();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

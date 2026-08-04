@@ -1,0 +1,203 @@
+/* style.css — NeuralAtlas shared design system */
+
+:root {
+  --bg: #0a0c11;
+  --bg-alt: #0d1017;
+  --panel-bg: #12151c;
+  --panel-bg-2: #161b25;
+  --card-bg: #141822;
+  --border: #232b38;
+  --border-soft: #1c2330;
+  --teal: #4fd1c5;
+  --teal-soft: #2f8f86;
+  --teal-dim: rgba(79, 209, 197, 0.12);
+  --amber: #e89a54;
+  --amber-soft: #b97a44;
+  --violet: #9b8bff;
+  --text: #b9c4d4;
+  --text-dim: #6b7688;
+  --text-bright: #eafaf7;
+  --canvas-bg: #10131a;
+  --grid: #181e28;
+  --danger: #e86464;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --maxw: 1180px;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, "Segoe UI", "Inter", system-ui, sans-serif;
+  scroll-behavior: smooth;
+}
+h1, h2, h3, h4 { color: var(--text-bright); margin: 0; font-weight: 700; }
+p { line-height: 1.6; }
+a { color: var(--teal); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.container { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+.mono { font-family: "SFMono-Regular", Consolas, monospace; }
+
+/* ---------------- Top nav (shared across every page) ---------------- */
+.na-nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(10,12,17,0.88);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+.na-nav-inner {
+  max-width: var(--maxw); margin: 0 auto; padding: 0 24px;
+  height: 62px; display: flex; align-items: center; justify-content: space-between;
+  gap: 20px;
+}
+.na-brand { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 18px; color: var(--text-bright); white-space: nowrap; }
+.na-brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 10px var(--teal); }
+.na-nav-links { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.na-nav-links a {
+  color: var(--text-dim); font-size: 13.5px; padding: 8px 12px; border-radius: var(--radius-sm);
+  white-space: nowrap; text-decoration: none; transition: background 0.15s, color 0.15s;
+}
+.na-nav-links a:hover { color: var(--text-bright); background: var(--border-soft); }
+.na-nav-links a.active { color: var(--teal); background: var(--teal-dim); }
+.na-nav-more { position: relative; }
+.na-nav-more-btn {
+  color: var(--text-dim); font-size: 13.5px; padding: 8px 12px; border-radius: var(--radius-sm);
+  cursor: pointer; background: none; border: none; font-family: inherit;
+}
+.na-nav-more-btn:hover { color: var(--text-bright); background: var(--border-soft); }
+.na-nav-menu {
+  display: none; position: absolute; right: 0; top: calc(100% + 8px);
+  background: var(--panel-bg-2); border: 1px solid var(--border); border-radius: var(--radius);
+  min-width: 220px; padding: 6px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+}
+.na-nav-more:hover .na-nav-menu, .na-nav-more:focus-within .na-nav-menu { display: block; }
+.na-nav-menu a { display: block; padding: 9px 10px; border-radius: 6px; font-size: 13.5px; color: var(--text); }
+.na-nav-menu a:hover { background: var(--border-soft); color: var(--text-bright); text-decoration: none; }
+.na-nav-menu .section-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-dim); padding: 8px 10px 4px; }
+
+/* ---------------- Buttons ---------------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: inherit; font-size: 14px; font-weight: 600;
+  background: var(--border-soft); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 11px 20px; cursor: pointer; text-decoration: none;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+}
+.btn:hover { background: #212a3a; border-color: var(--teal); color: var(--text-bright); text-decoration: none; }
+.btn:active { transform: translateY(1px); }
+.btn-primary { background: var(--teal-soft); border-color: var(--teal-soft); color: #06110f; }
+.btn-primary:hover { background: var(--teal); border-color: var(--teal); color: #06110f; }
+.btn-ghost { background: transparent; }
+.btn-sm { padding: 7px 14px; font-size: 12.5px; }
+.btn-danger { border-color: var(--danger); color: var(--danger); }
+.btn-danger:hover { background: rgba(232,100,100,0.12); color: #ffb3b3; border-color: var(--danger); }
+.btn-block { width: 100%; }
+
+/* ---------------- Cards ---------------- */
+.card {
+  background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px;
+}
+.card-hover { transition: border-color 0.15s, transform 0.15s; }
+.card-hover:hover { border-color: var(--teal); transform: translateY(-2px); }
+
+/* ---------------- Form controls (shared across simulator pages) ---------------- */
+.field { margin-bottom: 14px; }
+.field label {
+  display: flex; justify-content: space-between; font-size: 12.5px; color: var(--text); margin-bottom: 6px;
+}
+.field label .val { color: var(--teal); font-variant-numeric: tabular-nums; font-family: "SFMono-Regular", Consolas, monospace; }
+input[type="range"] {
+  -webkit-appearance: none; width: 100%; height: 5px; border-radius: 3px; background: var(--border-soft); outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
+  background: var(--teal); border: 2px solid #06110f; cursor: pointer; margin-top: -1px;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 13px; height: 13px; border-radius: 50%; background: var(--teal); border: 2px solid #06110f; cursor: pointer;
+}
+select, input[type="text"], input[type="number"] {
+  width: 100%; font-family: inherit; background: var(--border-soft); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 10px; font-size: 13px;
+}
+.toggle-on { background: var(--teal-soft) !important; border-color: var(--teal) !important; color: #06110f !important; font-weight: 700; }
+.section-header {
+  font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: var(--text-dim); text-transform: uppercase;
+  margin: 22px 0 10px; border-top: 1px solid var(--border-soft); padding-top: 16px;
+}
+.section-header:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+.hint { font-size: 12px; line-height: 1.5; color: var(--text-dim); margin-top: 10px; }
+.badge {
+  display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.4px;
+  padding: 3px 9px; border-radius: 999px; text-transform: uppercase;
+}
+.badge-teal { background: var(--teal-dim); color: var(--teal); }
+.badge-amber { background: rgba(232,154,84,0.15); color: var(--amber); }
+.badge-violet { background: rgba(155,139,255,0.15); color: var(--violet); }
+
+/* ---------------- Tooltip (shared canvas hover tooltip) ---------------- */
+#tooltip {
+  position: fixed; z-index: 500; max-width: 300px;
+  background: #eaeee0; color: #1a1c22; font-size: 12.5px; line-height: 1.45;
+  padding: 9px 11px; border-radius: 6px; border: 1px solid #2a2a24;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35); pointer-events: none; display: none;
+}
+#tooltip b { color: #0d3b36; }
+
+/* ---------------- Footer ---------------- */
+.na-footer {
+  border-top: 1px solid var(--border); margin-top: 60px; padding: 30px 0;
+  color: var(--text-dim); font-size: 12.5px;
+}
+.na-footer .container { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+
+/* ---------------- Simulator page shell (sidebar + canvas + graphs) ---------------- */
+.sim-app {
+  display: grid; grid-template-columns: 320px 1fr;
+  height: calc(100vh - 62px);
+  width: 100%;
+}
+#sidebar {
+  background: var(--panel-bg); border-right: 1px solid var(--border);
+  overflow-y: auto; padding: 20px 18px 40px;
+}
+#sidebar::-webkit-scrollbar { width: 8px; }
+#sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.disease-desc, .drug-desc { font-size: 12px; line-height: 1.5; color: var(--text-dim); margin-top: 8px; min-height: 50px; }
+.status-line { font-family: "SFMono-Regular", Consolas, monospace; font-size: 12.5px; color: var(--teal); margin-top: 4px; }
+
+#main { display: grid; grid-template-rows: 1fr 230px; position: relative; min-width: 0; }
+#canvasWrap { position: relative; background: var(--canvas-bg); }
+canvas#sim { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; }
+#recenterBtn {
+  position: absolute; top: 10px; right: 12px; width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(18,21,28,0.85); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--teal); font-size: 16px; cursor: pointer; user-select: none;
+}
+#recenterBtn:hover { border-color: var(--teal); background: rgba(24,29,40,0.95); }
+#statusBar {
+  position: absolute; top: 10px; left: 14px; font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 12.5px; color: var(--text-dim); display: flex; gap: 18px; pointer-events: none; user-select: none;
+}
+#statusBar span.on { color: var(--teal); }
+#statusBar span.tag { color: var(--text-bright); }
+#graphs {
+  background: var(--panel-bg-2); border-top: 1px solid var(--border);
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background-color: var(--border);
+}
+.graph-cell { background: var(--panel-bg-2); padding: 8px 10px 6px; position: relative; min-width: 0; }
+.graph-title { font-size: 10.5px; color: var(--text-dim); letter-spacing: 0.4px; text-transform: uppercase; margin-bottom: 4px; }
+.graph-cell canvas { width: 100%; height: 160px; display: block; }
+
+@media (max-width: 900px) {
+  .sim-app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; }
+  #sidebar { max-height: 40vh; }
+  #main { height: 70vh; }
+}

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Formation — NeuralAtlas</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .layout { display: grid; grid-template-columns: 320px 1fr; height: calc(100vh - 62px); }
+  #side { background: var(--panel-bg); border-right: 1px solid var(--border); overflow-y: auto; padding: 24px 20px 40px; }
+  #stage { background: var(--canvas-bg); display: flex; align-items: center; justify-content: center; }
+  #memCanvas { width: 100%; height: 100%; display: block; }
+  .stage-track { display: flex; flex-direction: column; gap: 8px; margin: 14px 0; }
+  .stage-item { padding: 10px 12px; border-radius: 6px; background: var(--border-soft); font-size: 13px; color: var(--text-dim); border-left: 3px solid transparent; }
+  .stage-item.current { color: var(--text-bright); border-left-color: var(--teal); background: var(--teal-dim); }
+  .meter-wrap { background: var(--border-soft); border-radius: 999px; height: 10px; overflow: hidden; margin-top: 6px; }
+  .meter-fill { height: 100%; background: linear-gradient(90deg, #4fd1c5, #9b8bff); width: 0%; transition: width 0.2s; }
+</style>
+</head>
+<body>
+
+<nav class="na-nav">
+  <div class="na-nav-inner">
+    <div class="na-brand"><span class="dot"></span> NeuralAtlas</div>
+    <div class="na-nav-links">
+      <a href="index.html">Home</a>
+      <a href="network-builder.html">Network Builder</a>
+      <a href="disease-center.html">Disease Center</a>
+      <a href="drug-lab.html">Drug Lab</a>
+      <a href="dashboard.html">Dashboard</a>
+      <div class="na-nav-more">
+        <button class="na-nav-more-btn">More ▾</button>
+        <div class="na-nav-menu">
+          <div class="section-label">Simulators</div>
+          <a href="synapse-simulator.html">Synapse Simulator</a>
+          <a href="brain-regions.html">Brain Region Simulator</a>
+          <a href="reflex-arc.html">Reflex Arc Simulator</a>
+          <a href="vision.html">Vision Simulator</a>
+          <a href="memory.html" class="active">Memory Formation</a>
+          <a href="brain-3d.html">3D Brain Viewer</a>
+          <a href="microscopy.html">Microscopy Lab</a>
+          <div class="section-label">Tools</div>
+          <a href="signal-analyzer.html">Signal Analyzer</a>
+          <a href="experiment-builder.html">Build Your Own Experiment</a>
+          <a href="saved-experiments.html">Saved Experiments</a>
+          <a href="profile.html">Profile</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="layout">
+  <div id="side">
+    <div class="section-header" style="border-top:none; margin-top:0; padding-top:0;">Memory Formation</div>
+    <p class="hint" style="margin-top:0;">
+      Click <b>Rehearse</b> repeatedly to reactivate the connection between two neurons. Repeated,
+      closely-timed activation triggers long-term potentiation (LTP) — the synapse physically strengthens.
+      Stop rehearsing early and watch it fade.
+    </p>
+    <button id="btnRehearse" class="btn btn-primary btn-block">Rehearse 🔁</button>
+
+    <div class="section-header">Stage</div>
+    <div class="stage-track" id="stageTrack">
+      <div class="stage-item" data-stage="0">Short-Term Memory</div>
+      <div class="stage-item" data-stage="1">Repeated Activation</div>
+      <div class="stage-item" data-stage="2">Long-Term Potentiation (LTP)</div>
+      <div class="stage-item" data-stage="3">Long-Term Memory (Consolidated)</div>
+    </div>
+
+    <div class="field">
+      <label>Synaptic Strength <span class="val" id="valStrength">0%</span></label>
+      <div class="meter-wrap"><div class="meter-fill" id="meterFill"></div></div>
+    </div>
+
+    <div class="section-header">Why It Fades</div>
+    <p class="hint" style="margin-top:0;">
+      Short-term traces decay if not reinforced — this is modeled here as a slow passive decay. Once
+      potentiation crosses the consolidation threshold, the connection is treated as stable, mirroring how
+      long-term memories resist forgetting far better than fresh, unrehearsed ones.
+    </p>
+  </div>
+
+  <div id="stage"><canvas id="memCanvas"></canvas></div>
+</div>
+
+<script>
+"use strict";
+const canvas = document.getElementById("memCanvas");
+const ctx = canvas.getContext("2d");
+let dpr = Math.max(1, window.devicePixelRatio || 1);
+let W = 0, H = 0;
+let strength = 0.0; // 0..1
+let pulses = []; // { t0, dur }
+let lastT = performance.now();
+const CONSOLIDATION_THRESHOLD = 0.95;
+
+function resize() {
+  dpr = Math.max(1, window.devicePixelRatio || 1);
+  const rect = canvas.parentElement.getBoundingClientRect();
+  W = rect.width; H = rect.height;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener("resize", resize);
+
+function currentStage() {
+  if (strength >= CONSOLIDATION_THRESHOLD) return 3;
+  if (strength >= 0.6) return 2;
+  if (strength >= 0.22) return 1;
+  return 0;
+}
+function updateUI() {
+  document.getElementById("valStrength").textContent = Math.round(strength * 100) + "%";
+  document.getElementById("meterFill").style.width = (strength * 100) + "%";
+  const stage = currentStage();
+  document.querySelectorAll(".stage-item").forEach((el) => {
+    el.classList.toggle("current", parseInt(el.dataset.stage) === stage);
+  });
+}
+
+document.getElementById("btnRehearse").addEventListener("click", () => {
+  strength = Math.min(1, strength + 0.12);
+  pulses.push({ t0: performance.now(), dur: 700 });
+  updateUI();
+});
+
+function draw(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+
+  // Passive decay unless consolidated
+  if (strength < CONSOLIDATION_THRESHOLD) {
+    strength = Math.max(0, strength - 0.01 * dt * 4);
+    updateUI();
+  }
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = "#10131a"; ctx.fillRect(0, 0, W, H);
+
+  const ax = W * 0.28, ay = H * 0.5, bx = W * 0.72, by = H * 0.5;
+
+  const lineColor = strength >= CONSOLIDATION_THRESHOLD ? "#4fd1c5" : (strength >= 0.6 ? "#9b8bff" : "#586275");
+  ctx.strokeStyle = lineColor;
+  ctx.lineWidth = 2 + strength * 10;
+  ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+
+  pulses = pulses.filter((p) => now - p.t0 < p.dur);
+  for (const p of pulses) {
+    const frac = (now - p.t0) / p.dur;
+    const x = ax + (bx - ax) * frac, y = ay + (by - ay) * frac;
+    ctx.fillStyle = "#ffd166";
+    ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill();
+  }
+
+  [["Neuron A", ax], ["Neuron B", bx]].forEach(([label, x]) => {
+    const grad = ctx.createRadialGradient(x, ay, 0, x, ay, 70);
+    grad.addColorStop(0, lineColor + "44"); grad.addColorStop(1, lineColor + "00");
+    ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x, ay, 70, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#161b25"; ctx.beginPath(); ctx.arc(x, ay, 40, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = lineColor; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = "#eafaf7"; ctx.font = "bold 13px -apple-system, Segoe UI, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(label, x, ay);
+  });
+
+  ctx.fillStyle = "#8b96a8"; ctx.font = "13px -apple-system, Segoe UI, sans-serif"; ctx.textAlign = "center";
+  ctx.fillText(currentStage() === 3 ? "Consolidated — this connection now resists decay." : "Not yet consolidated — will fade without rehearsal.", W / 2, ay + 110);
+
+  requestAnimationFrame(draw);
+}
+
+resize();
+updateUI();
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>

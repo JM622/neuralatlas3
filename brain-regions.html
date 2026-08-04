@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brain Region Simulator — NeuralAtlas</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .layout { display: grid; grid-template-columns: 1fr 360px; height: calc(100vh - 62px); }
+  #stage { background: var(--canvas-bg); display: flex; align-items: center; justify-content: center; padding: 20px; }
+  #side { background: var(--panel-bg); border-left: 1px solid var(--border); overflow-y: auto; padding: 24px 20px 40px; }
+  svg { max-width: 100%; max-height: 100%; }
+  .region { cursor: pointer; transition: opacity 0.15s, filter 0.15s; opacity: 0.78; }
+  .region:hover { opacity: 0.95; filter: brightness(1.15); }
+  .region.active { opacity: 1; filter: brightness(1.3); }
+  .region-label { font-size: 12px; fill: var(--text-bright); pointer-events: none; font-family: -apple-system, "Segoe UI", sans-serif; }
+  .info-title { font-size: 20px; color: var(--text-bright); margin-bottom: 6px; display:flex; align-items:center; gap:10px; }
+  .info-dot { width: 12px; height: 12px; border-radius: 3px; display:inline-block; }
+  .info-body { font-size: 13.5px; color: var(--text-dim); line-height: 1.65; margin-top: 10px; }
+  .func-list { margin: 12px 0 0; padding-left: 18px; font-size: 13px; color: var(--text); }
+  .func-list li { margin-bottom: 6px; }
+  .placeholder { color: var(--text-dim); font-size: 13.5px; }
+</style>
+</head>
+<body>
+
+<nav class="na-nav">
+  <div class="na-nav-inner">
+    <div class="na-brand"><span class="dot"></span> NeuralAtlas</div>
+    <div class="na-nav-links">
+      <a href="index.html">Home</a>
+      <a href="network-builder.html">Network Builder</a>
+      <a href="disease-center.html">Disease Center</a>
+      <a href="drug-lab.html">Drug Lab</a>
+      <a href="dashboard.html">Dashboard</a>
+      <div class="na-nav-more">
+        <button class="na-nav-more-btn">More ▾</button>
+        <div class="na-nav-menu">
+          <div class="section-label">Simulators</div>
+          <a href="synapse-simulator.html">Synapse Simulator</a>
+          <a href="brain-regions.html" class="active">Brain Region Simulator</a>
+          <a href="reflex-arc.html">Reflex Arc Simulator</a>
+          <a href="vision.html">Vision Simulator</a>
+          <a href="memory.html">Memory Formation</a>
+          <a href="brain-3d.html">3D Brain Viewer</a>
+          <a href="microscopy.html">Microscopy Lab</a>
+          <div class="section-label">Tools</div>
+          <a href="signal-analyzer.html">Signal Analyzer</a>
+          <a href="experiment-builder.html">Build Your Own Experiment</a>
+          <a href="saved-experiments.html">Saved Experiments</a>
+          <a href="profile.html">Profile</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="layout">
+  <div id="stage">
+    <svg viewBox="0 0 640 460" width="640" height="460">
+      <!-- Simplified side-profile brain outline (illustrative, not anatomically precise) -->
+      <path d="M 120 260
+               C 60 230, 60 140, 120 100
+               C 150 60, 230 40, 300 55
+               C 360 30, 460 45, 500 100
+               C 545 120, 555 190, 520 230
+               C 545 250, 530 300, 490 305
+               C 480 340, 430 360, 390 345
+               C 350 375, 270 375, 240 345
+               C 190 350, 140 320, 135 285
+               Z"
+            fill="#161b25" stroke="#2a3242" stroke-width="2"/>
+
+      <!-- Frontal lobe -->
+      <path class="region" id="frontal"
+            d="M 140 110 C 165 70, 240 52, 300 62 C 320 70, 320 130, 300 160
+               C 250 175, 180 165, 150 150 C 135 140, 132 120, 140 110 Z"
+            fill="#4fd1c5"/>
+      <text class="region-label" x="185" y="105">Frontal Lobe</text>
+
+      <!-- Occipital lobe -->
+      <path class="region" id="occipital"
+            d="M 480 120 C 520 130, 545 175, 520 220 C 505 235, 470 235, 455 215
+               C 445 185, 450 145, 480 120 Z"
+            fill="#9b8bff"/>
+      <text class="region-label" x="455" y="115">Occipital Lobe</text>
+
+      <!-- Cerebellum -->
+      <path class="region" id="cerebellum"
+            d="M 410 300 C 450 295, 490 305, 495 330 C 498 355, 460 365, 425 358
+               C 400 353, 390 320, 410 300 Z"
+            fill="#e89a54"/>
+      <text class="region-label" x="400" y="385">Cerebellum</text>
+
+      <!-- Hippocampus (deep structure — shown schematically) -->
+      <path class="region" id="hippocampus"
+            d="M 300 230 C 330 220, 365 230, 375 250 C 380 270, 355 285, 330 280
+               C 310 277, 295 250, 300 230 Z"
+            fill="#ffd166" opacity="0.65"/>
+      <text class="region-label" x="295" y="225">Hippocampus*</text>
+
+      <text x="20" y="440" font-size="11" fill="#586275" font-family="sans-serif">
+        *Hippocampus is a deep internal structure — shown schematically here, not at its true depth.
+      </text>
+    </svg>
+  </div>
+
+  <div id="side">
+    <div id="infoPanel">
+      <div class="placeholder">Click a highlighted region on the diagram to learn what it does.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const REGIONS = {
+  frontal: {
+    name: "Frontal Lobe",
+    color: "#4fd1c5",
+    summary: "The frontal lobe handles higher-order thinking: planning, decision-making, impulse control, "
+      + "personality, and voluntary movement. Its rearmost strip (the motor cortex) directly controls "
+      + "muscle movement, while the front (prefrontal cortex) handles judgment and reasoning.",
+    functions: ["Planning & decision-making", "Impulse control & personality", "Voluntary movement (motor cortex)", "Speech production (Broca's area)"],
+  },
+  occipital: {
+    name: "Occipital Lobe",
+    color: "#9b8bff",
+    summary: "The occipital lobe, at the very back of the brain, is dedicated almost entirely to processing "
+      + "visual information arriving from the eyes via the optic nerve and thalamus.",
+    functions: ["Visual processing", "Color & motion detection", "Depth perception", "Recognizing shapes and objects"],
+  },
+  cerebellum: {
+    name: "Cerebellum",
+    color: "#e89a54",
+    summary: "Tucked underneath the back of the brain, the cerebellum ('little brain') fine-tunes movement. "
+      + "It doesn't initiate motor commands, but constantly compares intended movement with actual movement "
+      + "to keep you balanced and coordinated.",
+    functions: ["Balance & posture", "Motor coordination", "Fine-tuning movement precision", "Motor skill learning (e.g. riding a bike)"],
+  },
+  hippocampus: {
+    name: "Hippocampus",
+    color: "#ffd166",
+    summary: "Buried deep in the temporal lobe, the hippocampus is essential for turning short-term "
+      + "experiences into long-term memories, and for spatial navigation — literally building a 'map' of "
+      + "your surroundings.",
+    functions: ["Short-term → long-term memory conversion", "Spatial navigation & mental mapping", "Contextual & episodic memory", "Heavily affected early in Alzheimer's disease"],
+  },
+};
+
+const svgRegions = document.querySelectorAll(".region");
+const infoPanel = document.getElementById("infoPanel");
+
+function showRegion(id) {
+  svgRegions.forEach((r) => r.classList.toggle("active", r.id === id));
+  const r = REGIONS[id];
+  infoPanel.innerHTML = `
+    <div class="info-title"><span class="info-dot" style="background:${r.color}"></span>${r.name}</div>
+    <div class="info-body">${r.summary}</div>
+    <ul class="func-list">${r.functions.map(f => `<li>${f}</li>`).join("")}</ul>
+  `;
+}
+
+svgRegions.forEach((r) => r.addEventListener("click", () => showRegion(r.id)));
+</script>
+</body>
+</html>
