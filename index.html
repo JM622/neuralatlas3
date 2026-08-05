@@ -31,15 +31,25 @@
   .section-head h2 { font-size: 26px; }
   .section-head p { color: var(--text-dim); margin: 6px 0 0; max-width: 560px; }
 
-  .module-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-  .module-card {
-    display: flex; flex-direction: column; gap: 10px; text-decoration: none; color: inherit;
-    padding: 22px; min-height: 160px;
+  .sphere-shell {
+    position: relative; width: 100%; height: 620px; border-radius: var(--radius);
+    background: radial-gradient(circle at 50% 45%, #121722 0%, #0a0c11 70%);
+    border: 1px solid var(--border); overflow: hidden;
   }
-  .module-card .icon { font-size: 26px; }
-  .module-card h3 { font-size: 16px; color: var(--text-bright); }
-  .module-card p { font-size: 13px; color: var(--text-dim); margin: 0; flex: 1; }
-  .module-card .go { font-size: 12.5px; color: var(--teal); font-weight: 700; }
+  #sphereCanvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; }
+  #sphereCanvas.dragging { cursor: grabbing; }
+  .sphere-info {
+    position: absolute; left: 20px; bottom: 20px; right: 20px;
+    max-width: 420px; background: rgba(15,18,26,0.82); backdrop-filter: blur(8px);
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px;
+    pointer-events: none; transition: opacity 0.15s;
+  }
+  .sphere-info-empty { font-size: 13px; color: var(--text-dim); }
+  .sphere-info h4 { font-size: 15.5px; color: var(--text-bright); margin-bottom: 6px; display:flex; align-items:center; gap:8px; }
+  .sphere-info h4 .dot { width: 9px; height: 9px; border-radius: 50%; display:inline-block; }
+  .sphere-info p { font-size: 13px; color: var(--text-dim); margin: 0; line-height: 1.5; }
+  .sphere-info .go-hint { font-size: 11.5px; color: var(--teal); margin-top: 8px; font-weight: 700; }
+  @media (max-width: 700px) { .sphere-shell { height: 460px; } }
 
   .updates-list { display: flex; flex-direction: column; gap: 14px; }
   .update-item { display: flex; gap: 16px; padding: 16px 20px; }
@@ -54,12 +64,8 @@
   }
 
   @media (max-width: 900px) {
-    .module-grid { grid-template-columns: 1fr 1fr; }
     .stats-grid { grid-template-columns: 1fr 1fr; }
     .hero h1 { font-size: 32px; }
-  }
-  @media (max-width: 560px) {
-    .module-grid { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -127,101 +133,16 @@
     <div>
       <h2>Featured simulations</h2>
       <p>Every module runs the same underlying neuron engine — a leaky integrate-and-fire model with
-        real conduction delays, refractory periods, and Hebbian plasticity.</p>
+        real conduction delays, refractory periods, and Hebbian plasticity. Drag the sphere to explore,
+        click a node to open it.</p>
     </div>
   </div>
-  <div class="module-grid">
 
-    <a href="network-builder.html" class="card card-hover module-card">
-      <div class="icon">🧩</div>
-      <h3>Neural Network Builder</h3>
-      <p>Drag neurons onto a canvas, wire them into circuits, and watch action potentials propagate,
-        loop, and oscillate in real time.</p>
-      <span class="go">Open builder →</span>
-    </a>
-
-    <a href="synapse-simulator.html" class="card card-hover module-card">
-      <div class="icon">⚡</div>
-      <h3>Synapse Simulator</h3>
-      <p>Zoom into a single synapse. Adjust neurotransmitter release, receptor sensitivity, and synaptic
-        strength to see how each shapes the postsynaptic response.</p>
-      <span class="go">Open simulator →</span>
-    </a>
-
-    <a href="brain-regions.html" class="card card-hover module-card">
-      <div class="icon">🧠</div>
-      <h3>Brain Region Simulator</h3>
-      <p>Click through the hippocampus, cerebellum, frontal lobe, and occipital lobe to see what
-        computation each region specializes in.</p>
-      <span class="go">Explore regions →</span>
-    </a>
-
-    <a href="reflex-arc.html" class="card card-hover module-card">
-      <div class="icon">🔥</div>
-      <h3>Reflex Arc Simulator</h3>
-      <p>Touch a hot object and trace the signal: skin → sensory neuron → spinal cord → motor neuron → muscle.</p>
-      <span class="go">Run reflex →</span>
-    </a>
-
-    <a href="vision.html" class="card card-hover module-card">
-      <div class="icon">👁️</div>
-      <h3>Vision Simulator</h3>
-      <p>Follow a flash of light as it travels from retina to optic nerve to visual cortex.</p>
-      <span class="go">See it work →</span>
-    </a>
-
-    <a href="memory.html" class="card card-hover module-card">
-      <div class="icon">💾</div>
-      <h3>Memory Formation</h3>
-      <p>Rehearse a signal repeatedly and watch short-term activity convert into long-term potentiation.</p>
-      <span class="go">Form a memory →</span>
-    </a>
-
-    <a href="disease-center.html" class="card card-hover module-card">
-      <div class="icon">🩺</div>
-      <h3>Disease Center</h3>
-      <p>Switch between Alzheimer's, Parkinson's, MS, epilepsy, and stroke to see how each disrupts
-        firing, connectivity, and conduction.</p>
-      <span class="go">Open disease center →</span>
-    </a>
-
-    <a href="drug-lab.html" class="card card-hover module-card">
-      <div class="icon">💊</div>
-      <h3>Drug Laboratory</h3>
-      <p>Administer caffeine, nicotine, alcohol, dopamine, serotonin, or a local anesthetic and watch
-        the network respond.</p>
-      <span class="go">Enter the lab →</span>
-    </a>
-
-    <a href="brain-3d.html" class="card card-hover module-card">
-      <div class="icon">🌀</div>
-      <h3>3D Brain Viewer</h3>
-      <p>Rotate a simplified 3D brain model and click through major structures.</p>
-      <span class="go">Rotate in 3D →</span>
-    </a>
-
-    <a href="microscopy.html" class="card card-hover module-card">
-      <div class="icon">🔬</div>
-      <h3>Microscopy Lab</h3>
-      <p>Zoom from a whole brain down through tissue, neurons, dendrites, and individual synapses.</p>
-      <span class="go">Start zooming →</span>
-    </a>
-
-    <a href="signal-analyzer.html" class="card card-hover module-card">
-      <div class="icon">📈</div>
-      <h3>Signal Analyzer</h3>
-      <p>Spike trains, raster plots, firing frequency, and network-wide activity — all in one analytics view.</p>
-      <span class="go">Analyze signals →</span>
-    </a>
-
-    <a href="experiment-builder.html" class="card card-hover module-card">
-      <div class="icon">🧪</div>
-      <h3>Build Your Own Experiment</h3>
-      <p>Configure neuron count, learning, disease mode, and signal strength — then run it and scrub
-        through a full timeline of the results.</p>
-      <span class="go">Design an experiment →</span>
-    </a>
-
+  <div class="sphere-shell">
+    <canvas id="sphereCanvas"></canvas>
+    <div class="sphere-info" id="sphereInfo">
+      <div class="sphere-info-empty">Drag to rotate — hover a node to preview, click to open.</div>
+    </div>
   </div>
 </div>
 
@@ -348,6 +269,197 @@ function loop(t) {
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
+
+/* =========================================================================
+   Featured Simulations — rotatable 3D sphere of connected module nodes
+   ========================================================================= */
+(function () {
+  const MODULES = [
+    { name: "Neural Network Builder", href: "network-builder.html", color: "#4fd1c5",
+      desc: "Drag neurons onto a canvas, wire them into circuits, and watch action potentials propagate, loop, and oscillate in real time." },
+    { name: "Synapse Simulator", href: "synapse-simulator.html", color: "#4fd1c5",
+      desc: "Zoom into a single synapse and adjust neurotransmitter release, receptor sensitivity, and synaptic strength." },
+    { name: "Brain Region Simulator", href: "brain-regions.html", color: "#9b8bff",
+      desc: "Click through the hippocampus, cerebellum, frontal lobe, and occipital lobe to see what each region does." },
+    { name: "Reflex Arc Simulator", href: "reflex-arc.html", color: "#e89a54",
+      desc: "Touch a hot object and trace the signal: skin → sensory neuron → spinal cord → motor neuron → muscle." },
+    { name: "Vision Simulator", href: "vision.html", color: "#9b8bff",
+      desc: "Follow a flash of light as it travels from retina to optic nerve to visual cortex." },
+    { name: "Memory Formation", href: "memory.html", color: "#4fd1c5",
+      desc: "Rehearse a signal repeatedly and watch short-term activity convert into long-term potentiation." },
+    { name: "Disease Center", href: "disease-center.html", color: "#e86464",
+      desc: "Switch between Alzheimer's, Parkinson's, MS, epilepsy, and stroke to see how each disrupts the network." },
+    { name: "Drug Laboratory", href: "drug-lab.html", color: "#e89a54",
+      desc: "Administer caffeine, nicotine, alcohol, dopamine, serotonin, or a local anesthetic and watch the response." },
+    { name: "3D Brain Viewer", href: "brain-3d.html", color: "#66c2ff",
+      desc: "Rotate a simplified 3D brain model and click through its major structures." },
+    { name: "Microscopy Lab", href: "microscopy.html", color: "#ffd166",
+      desc: "Zoom from a whole brain down through tissue, neurons, dendrites, and individual synapses." },
+    { name: "Signal Analyzer", href: "signal-analyzer.html", color: "#4fd1c5",
+      desc: "Spike trains, raster plots, firing frequency, and network-wide activity in one analytics view." },
+    { name: "Build Your Own Experiment", href: "experiment-builder.html", color: "#9b8bff",
+      desc: "Configure neuron count, learning, disease mode, and signal strength, then scrub a full timeline." },
+  ];
+
+  const canvas = document.getElementById("sphereCanvas");
+  const sctx = canvas.getContext("2d");
+  const shell = document.querySelector(".sphere-shell");
+  const infoPanel = document.getElementById("sphereInfo");
+  let sw = 0, sh = 0, sdpr = Math.max(1, window.devicePixelRatio || 1);
+
+  function sresize() {
+    const rect = shell.getBoundingClientRect();
+    sw = rect.width; sh = rect.height; sdpr = Math.max(1, window.devicePixelRatio || 1);
+    canvas.width = sw * sdpr; canvas.height = sh * sdpr;
+    sctx.setTransform(sdpr, 0, 0, sdpr, 0, 0);
+  }
+  window.addEventListener("resize", sresize);
+
+  // Distribute nodes evenly on a sphere (Fibonacci sphere)
+  const n = MODULES.length;
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+  const nodes = MODULES.map((m, i) => {
+    const off = 2 / n;
+    const y = i * off - 1 + off / 2;
+    const r = Math.sqrt(Math.max(0, 1 - y * y));
+    const phi = i * goldenAngle;
+    return { ...m, ux: Math.cos(phi) * r, uy: y, uz: Math.sin(phi) * r, sx: 0, sy: 0, sz: 0, scale: 1 };
+  });
+
+  // Connect each node to its 3 nearest neighbors (spiderweb mesh, not a full puzzle-sphere)
+  const edges = [];
+  const edgeSet = new Set();
+  nodes.forEach((a, i) => {
+    const dists = nodes.map((b, j) => ({ j, d: i === j ? Infinity : (a.ux-b.ux)**2 + (a.uy-b.uy)**2 + (a.uz-b.uz)**2 }));
+    dists.sort((p, q) => p.d - q.d);
+    dists.slice(0, 3).forEach(({ j }) => {
+      const key = i < j ? `${i}_${j}` : `${j}_${i}`;
+      if (!edgeSet.has(key)) { edgeSet.add(key); edges.push([i, j]); }
+    });
+  });
+
+  let rotY = 0.6, rotX = -0.25, velY = 0.12;
+  let dragging = false, lastX = 0, lastY = 0, moved = 0;
+  let hovered = null;
+
+  canvas.addEventListener("mousedown", (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; moved = 0; velY = 0; canvas.classList.add("dragging"); });
+  window.addEventListener("mouseup", () => { dragging = false; canvas.classList.remove("dragging"); });
+  window.addEventListener("mousemove", (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    moved += Math.abs(dx) + Math.abs(dy);
+    lastX = e.clientX; lastY = e.clientY;
+    rotY += dx * 0.005;
+    rotX = Math.max(-1.1, Math.min(1.1, rotX + dy * 0.005));
+  });
+  canvas.addEventListener("touchstart", (e) => { dragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; moved = 0; velY = 0; }, { passive: true });
+  window.addEventListener("touchend", () => { dragging = false; });
+  window.addEventListener("touchmove", (e) => {
+    if (!dragging) return;
+    const dx = e.touches[0].clientX - lastX, dy = e.touches[0].clientY - lastY;
+    moved += Math.abs(dx) + Math.abs(dy);
+    lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+    rotY += dx * 0.005;
+    rotX = Math.max(-1.1, Math.min(1.1, rotX + dy * 0.005));
+  }, { passive: true });
+
+  function showInfo(node) {
+    if (!node) { infoPanel.innerHTML = `<div class="sphere-info-empty">Drag to rotate — hover a node to preview, click to open.</div>`; return; }
+    infoPanel.innerHTML = `
+      <h4><span class="dot" style="background:${node.color}"></span>${node.name}</h4>
+      <p>${node.desc}</p>
+      <div class="go-hint">Click to open →</div>
+    `;
+  }
+
+  canvas.addEventListener("mousemove", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    let best = null, bestD = 26;
+    for (const node of nodes) {
+      const d = Math.hypot(mx - node.sx, my - node.sy);
+      if (d < bestD * node.scale) { bestD = d; best = node; }
+    }
+    hovered = best;
+    canvas.style.cursor = dragging ? "grabbing" : (best ? "pointer" : "grab");
+    showInfo(best);
+  });
+  canvas.addEventListener("click", () => {
+    if (moved > 5) return; // was a drag
+    if (hovered) window.location.href = hovered.href;
+  });
+
+  function project() {
+    const cx = sw / 2, cy = sh / 2;
+    const R = Math.min(sw, sh) * 0.34;
+    const focal = R * 2.6;
+    for (const node of nodes) {
+      const x1 = node.ux * Math.cos(rotY) + node.uz * Math.sin(rotY);
+      const z1 = -node.ux * Math.sin(rotY) + node.uz * Math.cos(rotY);
+      const y1 = node.uy;
+      const y2 = y1 * Math.cos(rotX) - z1 * Math.sin(rotX);
+      const z2 = y1 * Math.sin(rotX) + z1 * Math.cos(rotX);
+      const x2 = x1;
+      const scale = focal / (focal + z2 * R);
+      node.sx = cx + x2 * R * scale;
+      node.sy = cy + y2 * R * scale;
+      node.sz = z2;
+      node.scale = scale;
+    }
+  }
+
+  function drawSphere() {
+    sctx.clearRect(0, 0, sw, sh);
+    project();
+
+    // edges, depth-faded
+    for (const [i, j] of edges) {
+      const a = nodes[i], b = nodes[j];
+      const depthA = (a.sz + 1) / 2, depthB = (b.sz + 1) / 2;
+      const alpha = Math.max(0.04, 0.28 - (depthA + depthB) * 0.11);
+      sctx.strokeStyle = `rgba(79,209,197,${alpha})`;
+      sctx.lineWidth = 1;
+      sctx.beginPath(); sctx.moveTo(a.sx, a.sy); sctx.lineTo(b.sx, b.sy); sctx.stroke();
+    }
+
+    // nodes, back-to-front
+    const ordered = [...nodes].sort((a, b) => a.sz - b.sz);
+    for (const node of ordered) {
+      const depth = (node.sz + 1) / 2; // 0 = front, 1 = back (camera looks toward -z-ish)
+      const frontness = 1 - depth;
+      const radius = 5 + frontness * 6;
+      const alpha = 0.35 + frontness * 0.65;
+
+      if (node === hovered || frontness > 0.75) {
+        const glow = sctx.createRadialGradient(node.sx, node.sy, 0, node.sx, node.sy, radius * 3.2);
+        glow.addColorStop(0, node.color + "55");
+        glow.addColorStop(1, node.color + "00");
+        sctx.fillStyle = glow;
+        sctx.beginPath(); sctx.arc(node.sx, node.sy, radius * 3.2, 0, Math.PI * 2); sctx.fill();
+      }
+
+      sctx.fillStyle = node.color;
+      sctx.globalAlpha = alpha;
+      sctx.beginPath(); sctx.arc(node.sx, node.sy, radius, 0, Math.PI * 2); sctx.fill();
+      sctx.globalAlpha = 1;
+
+      if (frontness > 0.15 || node === hovered) {
+        sctx.fillStyle = node === hovered ? "#eafaf7" : `rgba(185,196,212,${Math.min(1, alpha + 0.15)})`;
+        sctx.font = (node === hovered ? "bold " : "") + "12px -apple-system, Segoe UI, sans-serif";
+        sctx.textAlign = "center";
+        sctx.fillText(node.name, node.sx, node.sy - radius - 8);
+      }
+    }
+  }
+
+  function sloop() {
+    if (!dragging) rotY += velY * 0.006;
+    drawSphere();
+    requestAnimationFrame(sloop);
+  }
+  sresize();
+  sloop();
+})();
 </script>
 </body>
 </html>
