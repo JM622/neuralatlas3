@@ -402,7 +402,7 @@ requestAnimationFrame(loop);
       const x2 = x1;
       const scale = focal / (focal + z2 * R);
       node.sx = cx + x2 * R * scale;
-      node.sy = cy + y2 * R * scale;
+      node.sy = cy - y2 * R * scale;
       node.sz = z2;
       node.scale = scale;
     }
